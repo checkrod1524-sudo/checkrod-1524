@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>คนขับรถสองแถวสาย 1314</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        Arial,
+        "Noto Sans Thai",
+        sans-serif;
+      background: #f4f7fb;
+      color: #222;
+    }
+
+    .container {
+      width: min(900px, 94%);
+      margin: 20px auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      margin-bottom: 15px;
+    }
+
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 0;
+      color: #666;
+      font-size: 16px;
+    }
+
+    .status {
+      background: white;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+    }
+
+    .status.success {
+      color: #16803c;
+    }
+
+    .status.error {
+      color: #d62828;
+    }
+
+    .status.warning {
+      color: #b77900;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #startBtn {
+      background: #198754;
+      color: white;
+    }
+
+    #stopBtn {
+      background: #dc3545;
+      color: white;
+    }
+
+    #locateBtn {
+      width: 100%;
+      background: #0d6efd;
+      color: white;
+      margin-bottom: 12px;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .info {
+      background: white;
+      border-radius: 14px;
+      padding: 15px;
+      margin-bottom: 12px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+      line-height: 1.7;
+    }
+
+    .info strong {
+      color: #333;
+    }
+
+    #map {
+      width: 100%;
+      height: 560px;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+    }
+
+    /* =====================================================
+       รถ SVG
+       รถถูกออกแบบให้ "หัวรถอยู่ด้านบน"
+       ดังนั้น heading 0° = รถหันขึ้นเหนือ
+       แล้วค่อยหมุนตาม GPS
+       ===================================================== */
+
+    .vehicle-wrapper {
+      width: 70px;
+      height: 70px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      transform-origin: center center;
+
+      transition:
+        transform 0.4s ease;
+    }
+
+    .vehicle-svg {
+      width: 58px;
+      height: 58px;
+
+      filter:
+        drop-shadow(
+          0 3px 4px
+          rgba(0,0,0,0.35)
+        );
+
+      display: block;
+    }
+
+    .route-label {
+      background: white;
+      border: 2px solid #1683d8;
+      border-radius: 8px;
+      padding: 5px 9px;
+      font-weight: bold;
+      color: #1265a3;
+      box-shadow: 0 2px 7px rgba(0,0,0,0.2);
+    }
+
+    .route-loading {
+      background: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: 0 2px 7px rgba(0,0,0,0.2);
+    }
+
+    @media (max-width: 600px) {
+
+      .container {
+        width: 96%;
+        margin: 10px auto;
+      }
+
+      .header h1 {
+        font-size: 23px;
+      }
+
+      .buttons {
+        grid-template-columns: 1fr;
+      }
+
+      #map {
+        height: 500px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+
+    <h1>
+      🚐 รถสองแถวสาย 1314
+    </h1>
+
+    <p>
+      ระบบแชร์ตำแหน่งสำหรับคนขับ
+    </p>
+
+  </div>
+
+
+  <!-- STATUS -->
+  <div
+    id="status"
+    class="status warning"
+  >
+    🟡 กำลังเชื่อมต่อ Firebase...
+  </div>
+
+
+  <!-- BUTTONS -->
+  <div class="buttons">
+
+    <button id="startBtn">
+      ▶️ เริ่มแชร์ตำแหน่ง
+    </button>
+
+    <button
+      id="stopBtn"
+      disabled
+    >
+      ⏹️ หยุดแชร์ตำแหน่ง
+    </button>
+
+  </div>
+
+
+  <button id="locateBtn">
+    📍 ดูตำแหน่งปัจจุบัน
+  </button>
+
+
+  <!-- INFO -->
+  <div class="info">
+
+    <div>
+      <strong>สถานะ GPS:</strong>
+      <span id="gpsStatus">
+        ยังไม่ได้เริ่ม
+      </span>
+    </div>
+
+    <div>
+      <strong>ละติจูด:</strong>
+      <span id="latText">-</span>
+    </div>
+
+    <div>
+      <strong>ลองจิจูด:</strong>
+      <span id="lngText">-</span>
+    </div>
+
+    <div>
+      <strong>ความเร็ว:</strong>
+      <span id="speedText">-</span>
+    </div>
+
+    <div>
+      <strong>ทิศทาง:</strong>
+      <span id="headingText">-</span>
+    </div>
+
+    <div>
+      <strong>อัปเดตล่าสุด:</strong>
+      <span id="timeText">-</span>
+    </div>
+
+  </div>
+
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+</div>
+
+
+<!-- Leaflet -->
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+
+
+<!-- Firebase -->
+<script type="module">
+
+/* =====================================================
+   FIREBASE IMPORT
+   ===================================================== */
+
+import {
+  initializeApp
+}
+from
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+
+import {
+  getAuth,
+  signInAnonymously
+}
+from
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+
+import {
+  getDatabase,
+  ref,
+  set
+}
+from
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
+
+/* =====================================================
+   FIREBASE CONFIG
+   ===================================================== */
+
+const firebaseConfig = {
+
+  apiKey:
+    "AIzaSyDm1Dn4GcE7EFLS-O0aMCLlU40xx86dmg4",
+
+  authDomain:
+    "checkrod-1314.firebaseapp.com",
+
+  databaseURL:
+    "https://checkrod-1314-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+  projectId:
+    "checkrod-1314",
+
+  storageBucket:
+    "checkrod-1314.firebasestorage.app",
+
+  messagingSenderId:
+    "894686328246",
+
+  appId:
+    "1:894686328246:web:9690cf10d8dbcf91c5fd17",
+
+  measurementId:
+    "G-53PLWF1K0F"
+
+};
+
+
+
+/* =====================================================
+   FIREBASE INITIALIZE
+   ===================================================== */
+
+let app = null;
+let auth = null;
+let db = null;
+let currentUser = null;
+
+
+try {
+
+  app =
+    initializeApp(
+      firebaseConfig
+    );
+
+  auth =
+    getAuth(app);
+
+  db =
+    getDatabase(app);
+
+}
+catch(error) {
+
+  console.error(
+    "Firebase Initialize Error:",
+    error
+  );
+
+}
+
+
+
+/* =====================================================
+   STATUS ELEMENTS
+   ===================================================== */
+
+const statusElement =
+  document.getElementById(
+    "status"
+  );
+
+
+const gpsStatus =
+  document.getElementById(
+    "gpsStatus"
+  );
+
+
+function setStatus(
+  message,
+  type = "warning"
+) {
+
+  statusElement.textContent =
+    message;
+
+  statusElement.className =
+    "status " + type;
+
+}
+
+
+
+/* =====================================================
+   MAP
+   ===================================================== */
+
+const map =
+  L.map("map")
+   .setView(
+     [13.7565, 100.6700],
+     13
+   );
+
+
+L.tileLayer(
+
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+
+  {
+    maxZoom: 19,
+
+    attribution:
+      "&copy; OpenStreetMap contributors"
+  }
+
+).addTo(map);
+
+
+
+/* =====================================================
+   ROUTE 1314
+   จุดตามแนวเส้นทางจริง
+   ใช้เป็น WAYPOINTS ให้ OSRM
+   เพื่อสร้างเส้นที่วิ่งตามถนน
+   ===================================================== */
+
+const routeWaypoints = [
+
+  // จุดเริ่มต้น: หมู่บ้านนักกีฬาแหลมทอง
+  [13.74570, 100.70119],
+
+  // ผ่าน: หมู่บ้านสวนสน (รามคำแหง 60)
+  [13.75776, 100.65081],
+
+  // จุดปลายทาง: เดอะมอลล์ไลฟ์สโตร์ บางกะปิ
+  [13.76614, 100.64266]
+
+];
+
+
+
+/* =====================================================
+   ROUTE VARIABLES
+   ===================================================== */
+
+let routeLine = null;
+
+let startMarker = null;
+
+let endMarker = null;
+
+
+
+/* =====================================================
+   CREATE REAL ROAD ROUTE
+   ===================================================== */
+
+async function createRealRoadRoute() {
+
+  try {
+
+    setStatus(
+      "🟡 กำลังโหลดเส้นทางถนนจริงของสาย 1314...",
+      "warning"
+    );
+
+
+    /*
+      OSRM ต้องการพิกัดในรูปแบบ
+
+      longitude,latitude
+    */
+
+    const coordinates =
+      routeWaypoints
+        .map(
+          point =>
+            `${point[1]},${point[0]}`
+        )
+        .join(";");
+
+
+    const url =
+      "https://router.project-osrm.org/route/v1/driving/"
+      +
+      coordinates
+      +
+      "?overview=full&geometries=geojson";
+
+
+    const response =
+      await fetch(url);
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "ไม่สามารถเชื่อมต่อระบบคำนวณเส้นทาง"
+      );
+
+    }
+
+
+    const result =
+      await response.json();
+
+
+    if (
+      !result.routes ||
+      result.routes.length === 0
+    ) {
+
+      throw new Error(
+        "ไม่พบเส้นทาง"
+      );
+
+    }
+
+
+    /*
+      เอา Geometry จาก OSRM
+      ซึ่งเป็นเส้นทางตามถนน
+    */
+
+    const roadCoordinates =
+      result.routes[0]
+        .geometry
+        .coordinates
+        .map(
+          point =>
+            [
+              point[1],
+              point[0]
+            ]
+        );
+
+
+    /*
+      วาดเส้นถนนจริง
+    */
+
+    routeLine =
+      L.polyline(
+
+        roadCoordinates,
+
+        {
+          color: "#1683d8",
+
+          weight: 7,
+
+          opacity: 0.9,
+
+          lineCap: "round",
+
+          lineJoin: "round"
+        }
+
+      ).addTo(map);
+
+
+    /*
+      ป้ายชื่อเส้นทาง
+    */
+
+    routeLine.bindTooltip(
+
+      "🚐 เส้นทางรถสองแถวสาย 1314",
+
+      {
+        permanent: true,
+
+        direction: "center",
+
+        className:
+          "route-label"
+      }
+
+    );
+
+
+    /*
+      จุดเริ่มต้น
+    */
+
+    startMarker =
+      L.marker(
+        routeWaypoints[0]
+      )
+      .addTo(map)
+      .bindPopup(
+        "<b>🚐 หมู่บ้านนักกีฬาแหลมทอง</b><br>จุดเริ่มต้นสาย 1314"
+      );
+
+
+    /*
+      จุดปลายทาง
+    */
+
+    endMarker =
+      L.marker(
+        routeWaypoints[
+          routeWaypoints.length - 1
+        ]
+      )
+      .addTo(map)
+      .bindPopup(
+        "<b>🏁 เดอะมอลล์บางกะปิ</b><br>จุดปลายทางสาย 1314"
+      );
+
+
+    /*
+      ซูมให้เห็นเส้นทางทั้งหมด
+    */
+
+    map.fitBounds(
+      routeLine.getBounds(),
+      {
+        padding: [
+          30,
+          30
+        ]
+      }
+    );
+
+
+    console.log(
+      "โหลดเส้นทางถนนจริงสำเร็จ"
+    );
+
+
+    setStatus(
+      "🟢 เส้นทางสาย 1314 พร้อมใช้งาน",
+      "success"
+    );
+
+  }
+
+  catch(error) {
+
+    console.error(
+      "Route Error:",
+      error
+    );
+
+
+    /*
+      สำคัญ:
+      ไม่มี fallback เป็นเส้นตรง
+
+      ถ้า OSRM โหลดไม่ได้
+      จะไม่วาดเส้นตรงแทน
+    */
+
+    setStatus(
+      "🟡 โหลดเส้นทางถนนจริงไม่สำเร็จ แต่ GPS ยังใช้งานได้",
+      "warning"
+    );
+
+  }
+
+}
+
+
+
+/* =====================================================
+   VEHICLE SVG
+   =====================================================
+
+   รถถูกวาดให้ "หัวอยู่ด้านบน"
+
+   0° = หัวรถขึ้นด้านบน
+   90° = หัวรถไปทางขวา
+   180° = หัวรถลง
+   270° = หัวรถไปทางซ้าย
+
+   ดังนั้นจะไม่เกิดปัญหา
+   รถหัวทิ่มจากการกลับด้านของ Emoji
+   ===================================================== */
+
+const vehicleIcon =
+  L.divIcon({
+
+    className: "",
+
+    html: `
+
+      <div
+        id="vehicleWrapper"
+        class="vehicle-wrapper"
+      >
+
+        <svg
+          class="vehicle-svg"
+          viewBox="0 0 100 100"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+
+          <!-- เงารถ -->
+          <ellipse
+            cx="50"
+            cy="91"
+            rx="28"
+            ry="5"
+            fill="rgba(0,0,0,0.20)"
+          />
+
+          <!-- ตัวรถ -->
+          <rect
+            x="25"
+            y="15"
+            width="50"
+            height="68"
+            rx="12"
+            fill="#1683d8"
+            stroke="#333"
+            stroke-width="3"
+          />
+
+          <!-- หลังคารถ -->
+          <rect
+            x="31"
+            y="22"
+            width="38"
+            height="23"
+            rx="5"
+            fill="#dff3ff"
+            stroke="#333"
+            stroke-width="2"
+          />
+
+          <!-- กระจกหน้า -->
+          <path
+            d="M34 25
+               Q50 18 66 25
+               L66 39
+               L34 39
+               Z"
+            fill="#9ed9f5"
+            stroke="#333"
+            stroke-width="2"
+          />
+
+          <!-- ไฟหน้า -->
+          <circle
+            cx="34"
+            cy="18"
+            r="4"
+            fill="#fff4a3"
+            stroke="#333"
+            stroke-width="1.5"
+          />
+
+          <circle
+            cx="66"
+            cy="18"
+            r="4"
+            fill="#fff4a3"
+            stroke="#333"
+            stroke-width="1.5"
+          />
+
+          <!-- ตัวถังด้านล่าง -->
+          <rect
+            x="31"
+            y="45"
+            width="38"
+            height="30"
+            rx="5"
+            fill="#20a9e8"
+            stroke="#333"
+            stroke-width="2"
+          />
+
+          <!-- หน้าต่างข้าง -->
+          <rect
+            x="34"
+            y="49"
+            width="12"
+            height="15"
+            rx="2"
+            fill="#dff3ff"
+          />
+
+          <rect
+            x="54"
+            y="49"
+            width="12"
+            height="15"
+            rx="2"
+            fill="#dff3ff"
+          />
+
+          <!-- ล้อ -->
+          <circle
+            cx="24"
+            cy="68"
+            r="7"
+            fill="#222"
+            stroke="#555"
+            stroke-width="2"
+          />
+
+          <circle
+            cx="76"
+            cy="68"
+            r="7"
+            fill="#222"
+            stroke="#555"
+            stroke-width="2"
+          />
+
+          <!-- ลูกศรบอกหัวรถ -->
+          <path
+            d="M50 3 L40 15 L60 15 Z"
+            fill="#e63946"
+            stroke="#333"
+            stroke-width="1"
+          />
+
+        </svg>
+
+      </div>
+
+    `,
+
+    iconSize: [
+      70,
+      70
+    ],
+
+    iconAnchor: [
+      35,
+      35
+    ],
+
+    popupAnchor: [
+      0,
+      -35
+    ]
+
+  });
+
+
+
+/* =====================================================
+   VEHICLE MARKER
+   ===================================================== */
+
+let vehicleMarker = null;
+
+
+
+/* =====================================================
+   GPS VARIABLES
+   ===================================================== */
+
+let watchId = null;
+
+let lastPosition = null;
+
+let lastHeading = 0;
+
+
+
+/* =====================================================
+   FIREBASE LOGIN
+   ===================================================== */
+
+async function loginFirebase() {
+
+  try {
+
+    setStatus(
+      "🟡 กำลังเข้าสู่ระบบ Firebase...",
+      "warning"
+    );
+
+
+    const result =
+      await signInAnonymously(
+        auth
+      );
+
+
+    currentUser =
+      result.user;
+
+
+    console.log(
+      "Firebase UID:",
+      currentUser.uid
+    );
+
+
+    setStatus(
+      "🟢 เชื่อมต่อ Firebase สำเร็จ",
+      "success"
+    );
+
+
+  }
+
+  catch(error) {
+
+    console.error(
+      "Firebase Login Error:",
+      error
+    );
+
+
+    setStatus(
+      "🔴 Firebase Login ไม่สำเร็จ: "
+      +
+      error.message,
+      "error"
+    );
+
+  }
+
+}
+
+
+
+/* =====================================================
+   CALCULATE HEADING
+   ===================================================== */
+
+function calculateHeading(
+  oldLat,
+  oldLng,
+  newLat,
+  newLng
+) {
+
+  const lat1 =
+    oldLat *
+    Math.PI /
+    180;
+
+
+  const lat2 =
+    newLat *
+    Math.PI /
+    180;
+
+
+  const dLng =
+    (
+      newLng -
+      oldLng
+    ) *
+    Math.PI /
+    180;
+
+
+  const y =
+    Math.sin(dLng) *
+    Math.cos(lat2);
+
+
+  const x =
+    Math.cos(lat1) *
+    Math.sin(lat2)
+    -
+    Math.sin(lat1) *
+    Math.cos(lat2) *
+    Math.cos(dLng);
+
+
+  let bearing =
+    Math.atan2(
+      y,
+      x
+    ) *
+    180 /
+    Math.PI;
+
+
+  bearing =
+    (
+      bearing +
+      360
+    ) % 360;
+
+
+  return bearing;
+
+}
+
+
+
+/* =====================================================
+   DISTANCE
+   ===================================================== */
+
+function calculateDistance(
+  lat1,
+  lng1,
+  lat2,
+  lng2
+) {
+
+  const R =
+    6371000;
+
+
+  const dLat =
+    (
+      lat2 -
+      lat1
+    ) *
+    Math.PI /
+    180;
+
+
+  const dLng =
+    (
+      lng2 -
+      lng1
+    ) *
+    Math.PI /
+    180;
+
+
+  const a =
+    Math.sin(dLat / 2) *
+    Math.sin(dLat / 2)
+    +
+    Math.cos(
+      lat1 *
+      Math.PI /
+      180
+    ) *
+    Math.cos(
+      lat2 *
+      Math.PI /
+      180
+    ) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
+
+
+  const c =
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    );
+
+
+  return R * c;
+
+}
+
+
+
+/* =====================================================
+   UPDATE VEHICLE ROTATION
+   ===================================================== */
+
+function updateVehicleRotation(
+  heading
+) {
+
+  const wrapper =
+    document.getElementById(
+      "vehicleWrapper"
+    );
+
+
+  if (!wrapper) {
+    return;
+  }
+
+
+  /*
+    SVG หัวรถชี้ขึ้นอยู่แล้ว
+
+    ดังนั้นไม่ต้องบวก 90°
+    และไม่ต้องกลับด้าน
+
+    0° = ขึ้น
+    90° = ขวา
+    180° = ลง
+    270° = ซ้าย
+  */
+
+  wrapper.style.transform =
+    `rotate(${heading}deg)`;
+
+}
+
+
+
+/* =====================================================
+   START GPS TRACKING
+   ===================================================== */
+
+function startTracking() {
+
+  if (!currentUser) {
+
+    alert(
+      "ยังไม่ได้เชื่อมต่อ Firebase\nกรุณารอสักครู่แล้วลองใหม่"
+    );
+
+    return;
+
+  }
+
+
+  if (!navigator.geolocation) {
+
+    alert(
+      "อุปกรณ์นี้ไม่รองรับ GPS"
+    );
+
+    return;
+
+  }
+
+
+  if (watchId !== null) {
+
+    console.log(
+      "GPS กำลังทำงานอยู่แล้ว"
+    );
+
+    return;
+
+  }
+
+
+  gpsStatus.textContent =
+    "กำลังค้นหาตำแหน่ง...";
+
+
+  setStatus(
+    "🟢 กำลังแชร์ตำแหน่งรถ",
+    "success"
+  );
+
+
+  watchId =
+    navigator.geolocation.watchPosition(
+
+      async (position) => {
+
+
+        /* =================================================
+           GPS DATA
+           ================================================= */
+
+        const lat =
+          position.coords.latitude;
+
+
+        const lng =
+          position.coords.longitude;
+
+
+        const speed =
+          position.coords.speed;
+
+
+        const gpsHeading =
+          position.coords.heading;
+
+
+        const accuracy =
+          position.coords.accuracy;
+
+
+
+        /* =================================================
+           HEADING
+           ================================================= */
+
+        let heading =
+          gpsHeading;
+
+
+        /*
+          บางเครื่องไม่มี heading
+
+          ให้คำนวณจากตำแหน่งก่อนหน้า
+        */
+
+        if (
+          heading === null ||
+          heading === undefined ||
+          Number.isNaN(heading)
+        ) {
+
+          if (lastPosition) {
+
+            const distance =
+              calculateDistance(
+
+                lastPosition.lat,
+
+                lastPosition.lng,
+
+                lat,
+
+                lng
+
+              );
+
+
+            /*
+              ต้องขยับมากกว่า 3 เมตร
+              จึงคำนวณทิศทาง
+            */
+
+            if (distance > 3) {
+
+              heading =
+                calculateHeading(
+
+                  lastPosition.lat,
+
+                  lastPosition.lng,
+
+                  lat,
+
+                  lng
+
+                );
+
+
+              lastHeading =
+                heading;
+
+            }
+            else {
+
+              heading =
+                lastHeading;
+
+            }
+
+          }
+          else {
+
+            heading =
+              lastHeading;
+
+          }
+
+        }
+        else {
+
+          lastHeading =
+            heading;
+
+        }
+
+
+
+        /* =================================================
+           SAVE LAST POSITION
+           ================================================= */
+
+        lastPosition = {
+
+          lat: lat,
+
+          lng: lng
+
+        };
+
+
+
+        /* =================================================
+           DISPLAY LATITUDE
+           ================================================= */
+
+        document.getElementById(
+          "latText"
+        ).textContent =
+          lat.toFixed(6);
+
+
+
+        /* =================================================
+           DISPLAY LONGITUDE
+           ================================================= */
+
+        document.getElementById(
+          "lngText"
+        ).textContent =
+          lng.toFixed(6);
+
+
+
+        /* =================================================
+           DISPLAY SPEED
+           ================================================= */
+
+        if (
+          speed !== null &&
+          !Number.isNaN(speed)
+        ) {
+
+          const kmh =
+            Math.max(
+              0,
+              speed * 3.6
+            );
+
+
+          document.getElementById(
+            "speedText"
+          ).textContent =
+            kmh.toFixed(1)
+            +
+            " km/h";
+
+        }
+        else {
+
+          document.getElementById(
+            "speedText"
+          ).textContent =
+            "ไม่ทราบ";
+
+        }
+
+
+
+        /* =================================================
+           DISPLAY HEADING
+           ================================================= */
+
+        document.getElementById(
+          "headingText"
+        ).textContent =
+          Math.round(
+            heading
+          )
+          +
+          "°";
+
+
+
+        /* =================================================
+           DISPLAY ACCURACY
+           ================================================= */
+
+        gpsStatus.textContent =
+          "🟢 GPS ทำงานปกติ";
+
+
+
+        /* =================================================
+           TIME
+           ================================================= */
+
+        const now =
+          new Date();
+
+
+        document.getElementById(
+          "timeText"
+        ).textContent =
+          now.toLocaleTimeString(
+            "th-TH"
+          );
+
+
+
+        /* =================================================
+           VEHICLE MARKER
+           ================================================= */
+
+        const newLatLng =
+          [
+            lat,
+            lng
+          ];
+
+
+        if (!vehicleMarker) {
+
+          vehicleMarker =
+            L.marker(
+
+              newLatLng,
+
+              {
+                icon:
+                  vehicleIcon,
+
+                zIndexOffset:
+                  1000
+              }
+
+            ).addTo(map);
+
+
+          vehicleMarker.bindPopup(
+
+            `
+              <b>🚐 รถสองแถวสาย 1314</b>
+              <br>
+              รถกำลังให้บริการ
+              <br>
+              <small>
+                ตำแหน่งจาก GPS คนขับ
+              </small>
+            `
+
+          );
+
+        }
+        else {
+
+          vehicleMarker
+            .setLatLng(
+              newLatLng
+            );
+
+        }
+
+
+
+        /* =================================================
+           ROTATE VEHICLE
+           ================================================= */
+
+        updateVehicleRotation(
+          heading
+        );
+
+
+
+        /* =================================================
+           SEND FIREBASE
+           ================================================= */
+
+        try {
+
+          const vehicleRef =
+            ref(
+              db,
+              "vehicles/1314"
+            );
+
+
+          await set(
+
+            vehicleRef,
+
+            {
+
+              lat:
+                lat,
+
+              lng:
+                lng,
+
+              heading:
+                heading,
+
+              speed:
+                speed !== null
+                  ? speed
+                  : 0,
+
+              accuracy:
+                accuracy !== null
+                  ? accuracy
+                  : 0,
+
+              updatedAt:
+                Date.now(),
+
+              driverUid:
+                currentUser.uid
+
+            }
+
+          );
+
+
+          console.log(
+            "ส่งตำแหน่งสำเร็จ:",
+            lat,
+            lng,
+            "heading:",
+            heading
+          );
+
+
+          setStatus(
+            "🟢 GPS ทำงานและส่งตำแหน่งรถแล้ว",
+            "success"
+          );
+
+        }
+
+        catch(error) {
+
+          console.error(
+            "Firebase Write Error:",
+            error
+          );
+
+
+          setStatus(
+            "🔴 ส่งตำแหน่งไป Firebase ไม่สำเร็จ",
+            "error"
+          );
+
+        }
+
+      },
+
+
+
+      /* =================================================
+         GPS ERROR
+         ================================================= */
+
+      (error) => {
+
+        console.error(
+          "GPS Error:",
+          error
+        );
+
+
+        gpsStatus.textContent =
+          "🔴 GPS ไม่ทำงาน";
+
+
+        if (
+          error.code ===
+          error.PERMISSION_DENIED
+        ) {
+
+          setStatus(
+            "🔴 กรุณาอนุญาตการเข้าถึงตำแหน่ง",
+            "error"
+          );
+
+
+          alert(
+            "กรุณากด Allow / อนุญาตการเข้าถึงตำแหน่งของเว็บไซต์"
+          );
+
+        }
+
+        else if (
+          error.code ===
+          error.POSITION_UNAVAILABLE
+        ) {
+
+          setStatus(
+            "🟡 ไม่สามารถหาตำแหน่ง GPS ได้",
+            "warning"
+          );
+
+        }
+
+        else if (
+          error.code ===
+          error.TIMEOUT
+        ) {
+
+          setStatus(
+            "🟡 GPS ใช้เวลาค้นหานานเกินไป",
+            "warning"
+          );
+
+        }
+
+      },
+
+
+      /* =================================================
+         GPS OPTIONS
+         ================================================= */
+
+      {
+
+        enableHighAccuracy:
+          true,
+
+        maximumAge:
+          3000,
+
+        timeout:
+          15000
+
+      }
+
+    );
+
+
+
+  document.getElementById(
+    "startBtn"
+  ).disabled =
+    true;
+
+
+  document.getElementById(
+    "stopBtn"
+  ).disabled =
+    false;
+
+}
+
+
+
+/* =====================================================
+   STOP GPS
+   ===================================================== */
+
+async function stopTracking() {
+
+  if (
+    watchId !== null
+  ) {
+
+    navigator.geolocation.clearWatch(
+      watchId
+    );
+
+    watchId =
+      null;
+
+  }
+
+
+  gpsStatus.textContent =
+    "หยุดแชร์ตำแหน่ง";
+
+
+  setStatus(
+    "🟡 หยุดแชร์ตำแหน่งแล้ว",
+    "warning"
+  );
+
+
+  document.getElementById(
+    "startBtn"
+  ).disabled =
+    false;
+
+
+  document.getElementById(
+    "stopBtn"
+  ).disabled =
+    true;
+
+
+  /*
+    ไม่ลบข้อมูลจาก Firebase
+
+    เพื่อให้ผู้โดยสารเห็น
+    ตำแหน่งล่าสุดของรถ
+  */
+
+}
+
+
+
+/* =====================================================
+   LOCATE BUTTON
+   ===================================================== */
+
+document.getElementById(
+  "locateBtn"
+).addEventListener(
+
+  "click",
+
+  () => {
+
+    if (vehicleMarker) {
+
+      map.setView(
+
+        vehicleMarker.getLatLng(),
+
+        17,
+
+        {
+          animate:
+            true
+        }
+
+      );
+
+
+      vehicleMarker.openPopup();
+
+    }
+
+    else {
+
+      alert(
+        "ยังไม่มีตำแหน่งรถ\nกรุณากด เริ่มแชร์ตำแหน่ง ก่อน"
+      );
+
+    }
+
+  }
+
+);
+
+
+
+/* =====================================================
+   BUTTON EVENTS
+   ===================================================== */
+
+document.getElementById(
+  "startBtn"
+).addEventListener(
+  "click",
+  startTracking
+);
+
+
+document.getElementById(
+  "stopBtn"
+).addEventListener(
+  "click",
+  stopTracking
+);
+
+
+
+/* =====================================================
+   START FIREBASE
+   ===================================================== */
+
+loginFirebase();
+
+
+
+/* =====================================================
+   LOAD REAL ROAD ROUTE
+   ===================================================== */
+
+createRealRoadRoute();
+
+
+</script>
+
+</body>
+</html>
