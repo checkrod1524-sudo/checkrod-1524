@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>เช็กรถสองแถวสาย 1524</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans Thai", sans-serif;
+      background: #f5f7fa;
+      color: #222;
+    }
+
+    header {
+      background: #1976d2;
+      color: white;
+      padding: 18px 15px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 25px;
+    }
+
+    header p {
+      margin: 7px 0 0;
+      font-size: 14px;
+      opacity: 0.95;
+    }
+
+    .container {
+      width: 95%;
+      max-width: 1000px;
+      margin: 20px auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    }
+
+    .firebase-status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      background: #fff3cd;
+      color: #856404;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .route-box {
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+      padding: 14px;
+      background: #e3f2fd;
+      border-radius: 10px;
+      color: #1565c0;
+      margin-bottom: 15px;
+    }
+
+    #map {
+      width: 100%;
+      height: 600px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    button {
+      border: none;
+      border-radius: 9px;
+      padding: 12px 18px;
+      font-size: 15px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .refresh-btn {
+      background: #1976d2;
+      color: white;
+    }
+
+    .location-btn {
+      background: #43a047;
+      color: white;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .eta-box {
+      background: #e8f5e9;
+      border: 2px solid #81c784;
+      border-radius: 14px;
+      padding: 18px;
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    .eta-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2e7d32;
+      margin-bottom: 8px;
+    }
+
+    .eta-time {
+      font-size: 32px;
+      font-weight: bold;
+      color: #1b5e20;
+      margin: 5px 0;
+    }
+
+    .eta-distance {
+      font-size: 16px;
+      color: #555;
+    }
+
+    .eta-note {
+      font-size: 13px;
+      color: #777;
+      margin-top: 8px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .info-item {
+      background: #f7f9fc;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .info-label {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .online {
+      color: #2e7d32;
+    }
+
+    .offline {
+      color: #c62828;
+    }
+
+    .waiting {
+      color: #ef6c00;
+    }
+
+    .vehicle-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .vehicle-emoji {
+      font-size: 50px;
+      width: 65px;
+      height: 65px;
+      line-height: 65px;
+      text-align: center;
+      transform-origin: center center;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));
+    }
+
+    .user-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .user-emoji {
+      font-size: 34px;
+      width: 45px;
+      height: 45px;
+      line-height: 45px;
+      text-align: center;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+    }
+
+    .footer {
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+      padding: 20px;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 21px;
+      }
+
+      #map {
+        height: 480px;
+      }
+
+      .eta-time {
+        font-size: 27px;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>🚌 รถสองแถวสาย 1524</h1>
+  <p>ระบบเช็กตำแหน่งรถแบบ Real-Time</p>
+</header>
+
+<div class="container">
+
+  <!-- Firebase Status -->
+  <div id="firebaseStatus" class="firebase-status">
+    🔄 กำลังเชื่อมต่อระบบ...
+  </div>
+
+  <!-- Route -->
+  <div class="card">
+    <div class="route-box">
+      🏁 หมู่บ้านนักกีฬาแหลมทอง
+      ↔
+      🏁 ตลาดเอี่ยมสมบัติ
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Buttons -->
+    <div class="button-row">
+      <button
+        id="refreshBtn"
+        class="refresh-btn"
+      >
+        🔄 รีเฟรชตำแหน่งรถ
+      </button>
+
+      <button
+        id="locationBtn"
+        class="location-btn"
+      >
+        📍 ใช้ตำแหน่งของฉัน
+      </button>
+    </div>
+
+    <!-- ETA -->
+    <div class="eta-box">
+
+      <div class="eta-title">
+        ⏱️ รถจะถึงคุณประมาณ
+      </div>
+
+      <div
+        id="etaTime"
+        class="eta-time"
+      >
+        กด "ใช้ตำแหน่งของฉัน"
+      </div>
+
+      <div
+        id="etaDistance"
+        class="eta-distance"
+      >
+        เพื่อคำนวณระยะทางและเวลา
+      </div>
+
+      <div class="eta-note">
+        * เวลาเป็นการประมาณจากเส้นทางถนน
+        และอาจเปลี่ยนแปลงตามสภาพการจราจร
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Vehicle Information -->
+  <div class="card">
+
+    <h2>🚐 ข้อมูลรถสองแถว</h2>
+
+    <div class="info-grid">
+
+      <div class="info-item">
+        <div class="info-label">
+          สถานะรถ
+        </div>
+
+        <div
+          id="vehicleStatus"
+          class="info-value waiting"
+        >
+          ⏳ กำลังรอตำแหน่ง
+        </div>
+      </div>
+
+
+      <div class="info-item">
+        <div class="info-label">
+          Latitude
+        </div>
+
+        <div
+          id="lat"
+          class="info-value"
+        >
+          -
+        </div>
+      </div>
+
+
+      <div class="info-item">
+        <div class="info-label">
+          Longitude
+        </div>
+
+        <div
+          id="lng"
+          class="info-value"
+        >
+          -
+        </div>
+      </div>
+
+
+      <div class="info-item">
+        <div class="info-label">
+          ทิศทางการเดินทาง
+        </div>
+
+        <div
+          id="heading"
+          class="info-value"
+        >
+          -
+        </div>
+      </div>
+
+
+      <div class="info-item">
+        <div class="info-label">
+          ความเร็ว
+        </div>
+
+        <div
+          id="speed"
+          class="info-value"
+        >
+          -
+        </div>
+      </div>
+
+
+      <div class="info-item">
+        <div class="info-label">
+          ความแม่นยำ GPS
+        </div>
+
+        <div
+          id="accuracy"
+          class="info-value"
+        >
+          -
+        </div>
+      </div>
+
+
+      <div class="info-item">
+        <div class="info-label">
+          อัปเดตล่าสุด
+        </div>
+
+        <div
+          id="lastUpdate"
+          class="info-value"
+        >
+          -
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div class="footer">
+  CheckRod 1524 | ระบบติดตามรถสองแถวสาย 1524
+</div>
+
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+<!-- Firebase -->
+<script type="module">
+
+  import {
+    initializeApp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+  import {
+    getDatabase,
+    ref,
+    onValue,
+    get
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+
+  // =========================================================
+  // FIREBASE CONFIG
+  // =========================================================
+
+  const firebaseConfig = {
+
+    apiKey:
+      "AIzaSyDm1Dn4GcE7EFLS-O0aMclU40xx86dmg4",
+
+    authDomain:
+      "checkrod-1524.firebaseapp.com",
+
+    databaseURL:
+      "https://checkrod-1524-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+    projectId:
+      "checkrod-1524",
+
+    storageBucket:
+      "checkrod-1524.firebasestorage.app",
+
+    messagingSenderId:
+      "894686328246",
+
+    appId:
+      "1:894686328246:web:9690cf10d8dbcf91c5fd17",
+
+    measurementId:
+      "G-53PLWF1K0F"
+
+  };
+
+
+  // =========================================================
+  // FIREBASE INITIALIZE
+  // =========================================================
+
+  const app =
+    initializeApp(firebaseConfig);
+
+  const database =
+    getDatabase(app);
+
+  const vehicleRef =
+    ref(database, "vehicles/1524");
+
+
+  // =========================================================
+  // ELEMENTS
+  // =========================================================
+
+  const firebaseStatus =
+    document.getElementById("firebaseStatus");
+
+  const vehicleStatus =
+    document.getElementById("vehicleStatus");
+
+  const latElement =
+    document.getElementById("lat");
+
+  const lngElement =
+    document.getElementById("lng");
+
+  const headingElement =
+    document.getElementById("heading");
+
+  const speedElement =
+    document.getElementById("speed");
+
+  const accuracyElement =
+    document.getElementById("accuracy");
+
+  const lastUpdateElement =
+    document.getElementById("lastUpdate");
+
+  const refreshBtn =
+    document.getElementById("refreshBtn");
+
+  const locationBtn =
+    document.getElementById("locationBtn");
+
+  const etaTime =
+    document.getElementById("etaTime");
+
+  const etaDistance =
+    document.getElementById("etaDistance");
+
+
+  // =========================================================
+  // MAP
+  // =========================================================
+
+  const map =
+    L.map("map").setView(
+      [13.730569, 100.653248],
+      13
+    );
+
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      maxZoom: 19,
+      attribution:
+        '&copy; OpenStreetMap contributors'
+    }
+  ).addTo(map);
+
+
+  // =========================================================
+  // ROUTE WAYPOINTS
+  // =========================================================
+
+  const routeWaypoints = [
+
+    [13.745854, 100.696101],
+    [13.742930, 100.695219],
+    [13.740458, 100.693833],
+    [13.739544, 100.690282],
+    [13.739952, 100.688576],
+    [13.740145, 100.688044],
+    [13.740543, 100.685578],
+    [13.741393, 100.682647],
+    [13.741900, 100.679686],
+    [13.742378, 100.676413],
+    [13.743789, 100.672598],
+    [13.745233, 100.669477],
+    [13.745907, 100.666696],
+    [13.746254, 100.664298],
+    [13.747739, 100.656195],
+    [13.744938, 100.653463],
+    [13.742275, 100.655203],
+    [13.735944, 100.651895],
+    [13.734123, 100.649745],
+    [13.732379, 100.649446],
+    [13.730569, 100.653248],
+    [13.731453, 100.650834],
+    [13.732599, 100.648364],
+    [13.733819, 100.645847],
+    [13.734139, 100.641249],
+    [13.731601, 100.641481],
+    [13.729121, 100.641648],
+    [13.726341, 100.641860],
+    [13.721512, 100.642213],
+    [13.713566, 100.643655]
+
+  ];
+
+
+  // =========================================================
+  // DRAW ROUTE USING OSRM
+  // =========================================================
+
+  async function drawRoute() {
+
+    try {
+
+      const coordinates =
+        routeWaypoints
+          .map(point =>
+            `${point[1]},${point[0]}`
+          )
+          .join(";");
+
+
+      const url =
+        `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+
+      const response =
+        await fetch(url);
+
+
+      if (!response.ok) {
+        throw new Error(
+          "OSRM response error"
+        );
+      }
+
+
+      const data =
+        await response.json();
+
+
+      if (
+        data.routes &&
+        data.routes.length > 0
+      ) {
+
+        const routeCoordinates =
+          data.routes[0]
+            .geometry
+            .coordinates
+            .map(coord => [
+              coord[1],
+              coord[0]
+            ]);
+
+
+        L.polyline(
+          routeCoordinates,
+          {
+            color: "#1976d2",
+            weight: 6,
+            opacity: 0.85
+          }
+        ).addTo(map);
+
+      } else {
+
+        drawFallbackRoute();
+
+      }
+
+    } catch (error) {
+
+      console.log(
+        "ไม่สามารถสร้างเส้นทาง OSRM:",
+        error
+      );
+
+      drawFallbackRoute();
+
+    }
+
+  }
+
+
+  // =========================================================
+  // FALLBACK ROUTE
+  // =========================================================
+
+  function drawFallbackRoute() {
+
+    L.polyline(
+      routeWaypoints,
+      {
+        color: "#1976d2",
+        weight: 5,
+        opacity: 0.75
+      }
+    ).addTo(map);
+
+  }
+
+
+  drawRoute();
+
+
+  // =========================================================
+  // START / END MARKERS
+  // =========================================================
+
+  L.marker(
+    routeWaypoints[0]
+  )
+  .addTo(map)
+  .bindPopup(
+    "🏁 หมู่บ้านนักกีฬาแหลมทอง"
+  );
+
+
+  L.marker(
+    routeWaypoints[
+      routeWaypoints.length - 1
+    ]
+  )
+  .addTo(map)
+  .bindPopup(
+    "🏁 ตลาดเอี่ยมสมบัติ"
+  );
+
+
+  // =========================================================
+  // VEHICLE MARKER
+  // =========================================================
+
+  let vehicleMarker = null;
+
+  let currentVehicleData = null;
+
+
+  function createVehicleIcon(
+    heading = 0
+  ) {
+
+    let angle =
+      Number(heading) || 0;
+
+    /*
+      GPS heading:
+      0 = เหนือ
+      90 = ตะวันออก
+      180 = ใต้
+      270 = ตะวันตก
+
+      Emoji รถหันไปทางขวาเป็นค่าเริ่มต้น
+      จึงปรับให้เข้ากับทิศทาง GPS
+    */
+
+    let rotation =
+      angle - 90;
+
+
+    /*
+      ป้องกันรถกลับหัว
+    */
+
+    let scaleX = 1;
+
+    if (
+      rotation > 90 &&
+      rotation < 270
+    ) {
+
+      rotation += 180;
+      scaleX = -1;
+
+    }
+
+
+    return L.divIcon({
+
+      className:
+        "vehicle-icon",
+
+      html:
+        `<div
+          class="vehicle-emoji"
+          style="
+            transform:
+              rotate(${rotation}deg)
+              scaleX(${scaleX});
+          "
+        >🚐</div>`,
+
+      iconSize: [
+        65,
+        65
+      ],
+
+      iconAnchor: [
+        32,
+        32
+      ]
+
+    });
+
+  }
+
+
+  // =========================================================
+  // USER MARKER
+  // =========================================================
+
+  let userMarker = null;
+
+  let userLocation = null;
+
+
+  function createUserIcon() {
+
+    return L.divIcon({
+
+      className:
+        "user-icon",
+
+      html:
+        `<div class="user-emoji">
+          📍
+        </div>`,
+
+      iconSize: [
+        45,
+        45
+      ],
+
+      iconAnchor: [
+        22,
+        42
+      ]
+
+    });
+
+  }
+
+
+  // =========================================================
+  // UPDATE VEHICLE ON MAP
+  // =========================================================
+
+  function updateVehicleOnMap(
+    data
+  ) {
+
+    if (
+      !data ||
+      typeof data.lat !== "number" ||
+      typeof data.lng !== "number"
+    ) {
+
+      return;
+
+    }
+
+
+    const position = [
+      data.lat,
+      data.lng
+    ];
+
+
+    const heading =
+      Number(data.heading) || 0;
+
+
+    if (!vehicleMarker) {
+
+      vehicleMarker =
+        L.marker(
+          position,
+          {
+            icon:
+              createVehicleIcon(
+                heading
+              ),
+            zIndexOffset: 1000
+          }
+        )
+        .addTo(map)
+        .bindPopup(
+          "🚐 รถสองแถวสาย 1524"
+        );
+
+    } else {
+
+      vehicleMarker.setLatLng(
+        position
+      );
+
+      vehicleMarker.setIcon(
+        createVehicleIcon(
+          heading
+        )
+      );
+
+    }
+
+  }
+
+
+  // =========================================================
+  // FORMAT TIME
+  // =========================================================
+
+  function formatDate(
+    timestamp
+  ) {
+
+    if (!timestamp) {
+      return "-";
+    }
+
+
+    const date =
+      new Date(timestamp);
+
+
+    return date.toLocaleString(
+      "th-TH",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }
+    );
+
+  }
+
+
+  // =========================================================
+  // UPDATE VEHICLE INFORMATION
+  // =========================================================
+
+  function updateVehicleInfo(
+    data
+  ) {
+
+    if (!data) {
+
+      vehicleStatus.textContent =
+        "🔴 ยังไม่มีข้อมูลรถ";
+
+      vehicleStatus.className =
+        "info-value offline";
+
+      return;
+
+    }
+
+
+    latElement.textContent =
+      typeof data.lat === "number"
+        ? data.lat.toFixed(6)
+        : "-";
+
+
+    lngElement.textContent =
+      typeof data.lng === "number"
+        ? data.lng.toFixed(6)
+        : "-";
+
+
+    headingElement.textContent =
+      typeof data.heading === "number"
+        ? `${Math.round(data.heading)}°`
+        : "-";
+
+
+    if (
+      typeof data.speed === "number"
+    ) {
+
+      const speedKmh =
+        data.speed * 3.6;
+
+      speedElement.textContent =
+        `${speedKmh.toFixed(1)} กม./ชม.`;
+
+    } else {
+
+      speedElement.textContent =
+        "-";
+
+    }
+
+
+    accuracyElement.textContent =
+      typeof data.accuracy === "number"
+        ? `${Math.round(data.accuracy)} เมตร`
+        : "-";
+
+
+    lastUpdateElement.textContent =
+      formatDate(
+        data.updatedAt
+      );
+
+
+    // ตรวจสอบว่าข้อมูลใหม่ไม่เกิน 5 นาที
+    const now =
+      Date.now();
+
+    const updated =
+      Number(data.updatedAt) || 0;
+
+    const age =
+      now - updated;
+
+
+    if (age <= 5 * 60 * 1000) {
+
+      vehicleStatus.textContent =
+        "🟢 รถกำลังให้บริการ";
+
+      vehicleStatus.className =
+        "info-value online";
+
+    } else {
+
+      vehicleStatus.textContent =
+        "🟠 ไม่มีการอัปเดตล่าสุด";
+
+      vehicleStatus.className =
+        "info-value waiting";
+
+    }
+
+  }
+
+
+  // =========================================================
+  // HAVERSINE DISTANCE
+  // =========================================================
+
+  function calculateDistance(
+    lat1,
+    lng1,
+    lat2,
+    lng2
+  ) {
+
+    const R =
+      6371;
+
+    const dLat =
+      (lat2 - lat1)
+      * Math.PI / 180;
+
+    const dLng =
+      (lng2 - lng1)
+      * Math.PI / 180;
+
+
+    const a =
+      Math.sin(dLat / 2) *
+      Math.sin(dLat / 2) +
+
+      Math.cos(
+        lat1 * Math.PI / 180
+      ) *
+
+      Math.cos(
+        lat2 * Math.PI / 180
+      ) *
+
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+
+
+    const c =
+      2 *
+      Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+      );
+
+
+    return R * c;
+
+  }
+
+
+  // =========================================================
+  // FORMAT DISTANCE
+  // =========================================================
+
+  function formatDistance(
+    distanceKm
+  ) {
+
+    if (
+      distanceKm < 1
+    ) {
+
+      return `${Math.round(
+        distanceKm * 1000
+      )} เมตร`;
+
+    }
+
+
+    return `${distanceKm.toFixed(2)} กม.`;
+
+  }
+
+
+  // =========================================================
+  // FORMAT ETA
+  // =========================================================
+
+  function formatETA(
+    minutes
+  ) {
+
+    const rounded =
+      Math.max(
+        1,
+        Math.ceil(minutes)
+      );
+
+
+    if (
+      rounded < 60
+    ) {
+
+      return `ประมาณ ${rounded} นาที`;
+
+    }
+
+
+    const hours =
+      Math.floor(
+        rounded / 60
+      );
+
+    const mins =
+      rounded % 60;
+
+
+    if (mins === 0) {
+
+      return `ประมาณ ${hours} ชั่วโมง`;
+
+    }
+
+
+    return `ประมาณ ${hours} ชม. ${mins} นาที`;
+
+  }
+
+
+  // =========================================================
+  // ETA REQUEST CONTROL
+  // =========================================================
+
+  let lastEtaRequestTime = 0;
+
+  let etaRequestInProgress =
+    false;
+
+  let etaRequestId = 0;
+
+
+  // =========================================================
+  // CALCULATE ETA
+  // =========================================================
+
+  async function calculateETA() {
+
+    if (
+      !userLocation
+    ) {
+
+      etaTime.textContent =
+        'กด "ใช้ตำแหน่งของฉัน"';
+
+      etaDistance.textContent =
+        "เพื่อคำนวณระยะทางและเวลา";
+
+      return;
+
+    }
+
+
+    if (
+      !currentVehicleData ||
+      typeof currentVehicleData.lat !== "number" ||
+      typeof currentVehicleData.lng !== "number"
+    ) {
+
+      etaTime.textContent =
+        "ยังไม่มีตำแหน่งรถ";
+
+      etaDistance.textContent =
+        "รอข้อมูลจากรถสองแถว";
+
+      return;
+
+    }
+
+
+    const vehicleLat =
+      currentVehicleData.lat;
+
+    const vehicleLng =
+      currentVehicleData.lng;
+
+    const userLat =
+      userLocation.lat;
+
+    const userLng =
+      userLocation.lng;
+
+
+    // ระยะเส้นตรง ใช้แสดงเบื้องต้น
+    const straightDistance =
+      calculateDistance(
+        vehicleLat,
+        vehicleLng,
+        userLat,
+        userLng
+      );
+
+
+    etaDistance.textContent =
+      `ระยะทางโดยประมาณ ${formatDistance(
+        straightDistance
+      )}`;
+
+
+    /*
+      ถ้าใกล้มากแล้ว
+    */
+
+    if (
+      straightDistance < 0.08
+    ) {
+
+      etaTime.textContent =
+        "🚐 ใกล้ถึงแล้ว";
+
+      etaDistance.textContent =
+        `ห่างจากคุณประมาณ ${Math.round(
+          straightDistance * 1000
+        )} เมตร`;
+
+      return;
+
+    }
+
+
+    /*
+      ป้องกันการเรียก OSRM ถี่เกินไป
+    */
+
+    const now =
+      Date.now();
+
+
+    if (
+      etaRequestInProgress
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      now - lastEtaRequestTime < 10000
+    ) {
+
+      return;
+
+    }
+
+
+    lastEtaRequestTime =
+      now;
+
+    etaRequestInProgress =
+      true;
+
+
+    const requestId =
+      ++etaRequestId;
+
+
+    try {
+
+      /*
+        OSRM ต้องการ:
+        longitude,latitude
+      */
+
+      const url =
+        `https://router.project-osrm.org/route/v1/driving/` +
+        `${vehicleLng},${vehicleLat};` +
+        `${userLng},${userLat}` +
+        `?overview=false`;
+
+
+      const response =
+        await fetch(url);
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          "ไม่สามารถเรียก OSRM ได้"
+        );
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      /*
+        ป้องกันผลเก่ามาทับผลใหม่
+      */
+
+      if (
+        requestId !== etaRequestId
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        data.routes &&
+        data.routes.length > 0
+      ) {
+
+        const route =
+          data.routes[0];
+
+
+        const roadDistanceKm =
+          route.distance / 1000;
+
+
+        const minutes =
+          route.duration / 60;
+
+
+        /*
+          ถ้ารถถึงตำแหน่งผู้ใช้แล้ว
+        */
+
+        if (
+          minutes < 0.5 ||
+          roadDistanceKm < 0.1
+        ) {
+
+          etaTime.textContent =
+            "🚐 ใกล้ถึงแล้ว";
+
+        } else {
+
+          etaTime.textContent =
+            formatETA(
+              minutes
+            );
+
+        }
+
+
+        etaDistance.textContent =
+          `ระยะทางตามถนนประมาณ ${formatDistance(
+            roadDistanceKm
+          )}`;
+
+
+      } else {
+
+        throw new Error(
+          "ไม่พบเส้นทาง"
+        );
+
+      }
+
+
+    } catch (error) {
+
+      console.log(
+        "ETA Error:",
+        error
+      );
+
+
+      /*
+        หาก OSRM ใช้งานไม่ได้
+        ใช้ความเร็วของรถคำนวณสำรอง
+      */
+
+      let speedKmh =
+        20;
+
+
+      if (
+        currentVehicleData &&
+        typeof currentVehicleData.speed === "number" &&
+        currentVehicleData.speed > 1.4
+      ) {
+
+        speedKmh =
+          currentVehicleData.speed * 3.6;
+
+      }
+
+
+      const estimatedMinutes =
+        (
+          straightDistance /
+          speedKmh
+        ) * 60;
+
+
+      etaTime.textContent =
+        formatETA(
+          estimatedMinutes
+        );
+
+
+      etaDistance.textContent =
+        `ระยะทางเส้นตรงประมาณ ${formatDistance(
+          straightDistance
+        )}`;
+
+    } finally {
+
+      etaRequestInProgress =
+        false;
+
+    }
+
+  }
+
+
+  // =========================================================
+  // GET USER LOCATION
+  // =========================================================
+
+  function getUserLocation() {
+
+    if (
+      !navigator.geolocation
+    ) {
+
+      alert(
+        "อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง GPS"
+      );
+
+      return;
+
+    }
+
+
+    locationBtn.disabled =
+      true;
+
+    locationBtn.textContent =
+      "📍 กำลังค้นหาตำแหน่ง...";
+
+
+    navigator.geolocation.getCurrentPosition(
+
+      function(position) {
+
+        const lat =
+          position.coords.latitude;
+
+        const lng =
+          position.coords.longitude;
+
+
+        userLocation = {
+          lat: lat,
+          lng: lng
+        };
+
+
+        /*
+          แสดงตำแหน่งผู้ใช้
+        */
+
+        if (!userMarker) {
+
+          userMarker =
+            L.marker(
+              [lat, lng],
+              {
+                icon:
+                  createUserIcon()
+              }
+            )
+            .addTo(map)
+            .bindPopup(
+              "📍 ตำแหน่งของคุณ"
+            );
+
+        } else {
+
+          userMarker.setLatLng(
+            [lat, lng]
+          );
+
+        }
+
+
+        /*
+          ซูมให้เห็นทั้งรถและผู้ใช้
+        */
+
+        if (
+          currentVehicleData &&
+          typeof currentVehicleData.lat === "number" &&
+          typeof currentVehicleData.lng === "number"
+        ) {
+
+          const bounds =
+            L.latLngBounds([
+
+              [
+                currentVehicleData.lat,
+                currentVehicleData.lng
+              ],
+
+              [
+                lat,
+                lng
+              ]
+
+            ]);
+
+
+          map.fitBounds(
+            bounds,
+            {
+              padding: [
+                50,
+                50
+              ],
+              maxZoom: 16
+            }
+          );
+
+        } else {
+
+          map.setView(
+            [lat, lng],
+            15
+          );
+
+        }
+
+
+        locationBtn.disabled =
+          false;
+
+        locationBtn.textContent =
+          "📍 อัปเดตตำแหน่งของฉัน";
+
+
+        calculateETA();
+
+      },
+
+      function(error) {
+
+        console.log(
+          "GPS Error:",
+          error
+        );
+
+
+        locationBtn.disabled =
+          false;
+
+        locationBtn.textContent =
+          "📍 ใช้ตำแหน่งของฉัน";
+
+
+        if (
+          error.code ===
+          error.PERMISSION_DENIED
+        ) {
+
+          alert(
+            "ไม่สามารถเข้าถึงตำแหน่งของคุณได้\n\n" +
+            "กรุณาอนุญาต Location/GPS ให้เว็บไซต์ก่อน"
+          );
+
+        } else if (
+          error.code ===
+          error.POSITION_UNAVAILABLE
+        ) {
+
+          alert(
+            "ไม่สามารถระบุตำแหน่ง GPS ได้ในขณะนี้"
+          );
+
+        } else {
+
+          alert(
+            "หมดเวลาในการค้นหาตำแหน่ง GPS"
+          );
+
+        }
+
+      },
+
+      {
+
+        enableHighAccuracy:
+          true,
+
+        timeout:
+          15000,
+
+        maximumAge:
+          30000
+
+      }
+
+    );
+
+  }
+
+
+  // =========================================================
+  // LOCATION BUTTON
+  // =========================================================
+
+  locationBtn.addEventListener(
+    "click",
+    getUserLocation
+  );
+
+
+  // =========================================================
+  // REAL-TIME FIREBASE
+  // =========================================================
+
+  onValue(
+
+    vehicleRef,
+
+    function(snapshot) {
+
+      firebaseStatus.textContent =
+        "🟢 เชื่อมต่อระบบสำเร็จ";
+
+      firebaseStatus.style.background =
+        "#d4edda";
+
+      firebaseStatus.style.color =
+        "#155724";
+
+
+      const data =
+        snapshot.val();
+
+
+      currentVehicleData =
+        data;
+
+
+      if (!data) {
+
+        vehicleStatus.textContent =
+          "🔴 ยังไม่มีตำแหน่งรถ";
+
+        vehicleStatus.className =
+          "info-value offline";
+
+
+        etaTime.textContent =
+          "ยังไม่มีตำแหน่งรถ";
+
+
+        etaDistance.textContent =
+          "รอคนขับเปิดแชร์ตำแหน่ง";
+
+
+        return;
+
+      }
+
+
+      updateVehicleInfo(
+        data
+      );
+
+
+      updateVehicleOnMap(
+        data
+      );
+
+
+      /*
+        คำนวณ ETA ใหม่
+        เมื่อรถมีการอัปเดตตำแหน่ง
+      */
+
+      if (
+        userLocation
+      ) {
+
+        calculateETA();
+
+      }
+
+    },
+
+    function(error) {
+
+      console.log(
+        "Firebase error:",
+        error
+      );
+
+
+      firebaseStatus.textContent =
+        "🔴 ไม่สามารถเชื่อมต่อ Firebase";
+
+      firebaseStatus.style.background =
+        "#f8d7da";
+
+      firebaseStatus.style.color =
+        "#721c24";
+
+    }
+
+  );
+
+
+  // =========================================================
+  // REFRESH BUTTON
+  // =========================================================
+
+  refreshBtn.addEventListener(
+    "click",
+    async function() {
+
+      refreshBtn.disabled =
+        true;
+
+      refreshBtn.textContent =
+        "🔄 กำลังโหลด...";
+
+
+      try {
+
+        const snapshot =
+          await get(
+            vehicleRef
+          );
+
+
+        const data =
+          snapshot.val();
+
+
+        if (!data) {
+
+          alert(
+            "ยังไม่มีข้อมูลตำแหน่งรถ"
+          );
+
+          return;
+
+        }
+
+
+        currentVehicleData =
+          data;
+
+
+        updateVehicleInfo(
+          data
+        );
+
+
+        updateVehicleOnMap(
+          data
+        );
+
+
+        /*
+          เลื่อนไปที่ตำแหน่งรถ
+        */
+
+        map.setView(
+          [
+            data.lat,
+            data.lng
+          ],
+          15
+        );
+
+
+        /*
+          คำนวณ ETA ใหม่
+        */
+
+        if (
+          userLocation
+        ) {
+
+          lastEtaRequestTime =
+            0;
+
+          calculateETA();
+
+        }
+
+
+      } catch (error) {
+
+        console.log(
+          error
+        );
+
+        alert(
+          "ไม่สามารถโหลดตำแหน่งรถได้"
+        );
+
+      } finally {
+
+        refreshBtn.disabled =
+          false;
+
+        refreshBtn.textContent =
+          "🔄 รีเฟรชตำแหน่งรถ";
+
+      }
+
+    }
+  );
+
+
+</script>
+
+</body>
+</html>
