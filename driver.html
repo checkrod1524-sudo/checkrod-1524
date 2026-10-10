@@ -8,7 +8,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>คนขับรถสองแถวสาย 1524</title>
+  <title>คนขับรถสองแถวสาย 1314</title>
 
   <!-- Leaflet -->
   <link
@@ -225,7 +225,7 @@
   <div class="header">
 
     <h1>
-      🚐 รถสองแถวสาย 1524
+      🚐 รถสองแถวสาย 1314
     </h1>
 
     <p>
@@ -358,16 +358,16 @@ const firebaseConfig = {
     "AIzaSyDm1Dn4GcE7EFLS-O0aMCLlU40xx86dmg4",
 
   authDomain:
-    "checkrod-1524.firebaseapp.com",
+    "checkrod-1314.firebaseapp.com",
 
   databaseURL:
-    "https://checkrod-1524-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "https://checkrod-1314-default-rtdb.asia-southeast1.firebasedatabase.app",
 
   projectId:
-    "checkrod-1524",
+    "checkrod-1314",
 
   storageBucket:
-    "checkrod-1524.firebasestorage.app",
+    "checkrod-1314.firebasestorage.app",
 
   messagingSenderId:
     "894686328246",
@@ -455,7 +455,7 @@ function setStatus(
 const map =
   L.map("map")
    .setView(
-     [13.735, 100.665],
+     [13.7565, 100.6700],
      13
    );
 
@@ -476,7 +476,7 @@ L.tileLayer(
 
 
 /* =====================================================
-   ROUTE 1524
+   ROUTE 1314
    จุดตามแนวเส้นทางจริง
    ใช้เป็น WAYPOINTS ให้ OSRM
    เพื่อสร้างเส้นที่วิ่งตามถนน
@@ -484,65 +484,14 @@ L.tileLayer(
 
 const routeWaypoints = [
 
-  [13.745854, 100.696101],
+  // จุดเริ่มต้น: หมู่บ้านนักกีฬาแหลมทอง
+  [13.74570, 100.70119],
 
-  [13.742930, 100.695219],
+  // ผ่าน: หมู่บ้านสวนสน (รามคำแหง 60)
+  [13.75776, 100.65081],
 
-  [13.740458, 100.693833],
-
-  [13.739544, 100.690282],
-
-  [13.739952, 100.688576],
-
-  [13.740145, 100.688044],
-
-  [13.740543, 100.685578],
-
-  [13.741393, 100.682647],
-
-  [13.741900, 100.679686],
-
-  [13.742378, 100.676413],
-
-  [13.743789, 100.672598],
-
-  [13.745233, 100.669477],
-
-  [13.745907, 100.666696],
-
-  [13.746254, 100.664298],
-
-  [13.747739, 100.656195],
-
-  [13.744938, 100.653463],
-
-  [13.742275, 100.655203],
-
-  [13.735944, 100.651895],
-
-  [13.734123, 100.649745],
-
-  [13.732379, 100.649446],
-
-  [13.730569, 100.653248],
-
-  [13.731453, 100.650834],
-
-  [13.732599, 100.648364],
-
-  [13.733819, 100.645847],
-
-  [13.734139, 100.641249],
-
-  [13.731601, 100.641481],
-
-  [13.729121, 100.641648],
-
-  [13.726341, 100.641860],
-
-  [13.721512, 100.642213],
-
-  [13.713566, 100.643655]
+  // จุดปลายทาง: เดอะมอลล์ไลฟ์สโตร์ บางกะปิ
+  [13.76614, 100.64266]
 
 ];
 
@@ -569,7 +518,7 @@ async function createRealRoadRoute() {
   try {
 
     setStatus(
-      "🟡 กำลังโหลดเส้นทางถนนจริงของสาย 1524...",
+      "🟡 กำลังโหลดเส้นทางถนนจริงของสาย 1314...",
       "warning"
     );
 
@@ -674,7 +623,7 @@ async function createRealRoadRoute() {
 
     routeLine.bindTooltip(
 
-      "🚐 เส้นทางรถสองแถวสาย 1524",
+      "🚐 เส้นทางรถสองแถวสาย 1314",
 
       {
         permanent: true,
@@ -698,7 +647,7 @@ async function createRealRoadRoute() {
       )
       .addTo(map)
       .bindPopup(
-        "<b>🚐 หมู่บ้านนักกีฬาแหลมทอง</b><br>จุดเริ่มต้นสาย 1524"
+        "<b>🚐 หมู่บ้านนักกีฬาแหลมทอง</b><br>จุดเริ่มต้นสาย 1314"
       );
 
 
@@ -714,7 +663,7 @@ async function createRealRoadRoute() {
       )
       .addTo(map)
       .bindPopup(
-        "<b>🏁 ตลาดเอี่ยมสมบัติ</b><br>จุดปลายทางสาย 1524"
+        "<b>🏁 เดอะมอลล์บางกะปิ</b><br>จุดปลายทางสาย 1314"
       );
 
 
@@ -739,7 +688,7 @@ async function createRealRoadRoute() {
 
 
     setStatus(
-      "🟢 เส้นทางสาย 1524 พร้อมใช้งาน",
+      "🟢 เส้นทางสาย 1314 พร้อมใช้งาน",
       "success"
     );
 
@@ -1512,7 +1461,7 @@ function startTracking() {
           vehicleMarker.bindPopup(
 
             `
-              <b>🚐 รถสองแถวสาย 1524</b>
+              <b>🚐 รถสองแถวสาย 1314</b>
               <br>
               รถกำลังให้บริการ
               <br>
@@ -1554,7 +1503,7 @@ function startTracking() {
           const vehicleRef =
             ref(
               db,
-              "vehicles/1524"
+              "vehicles/1314"
             );
 
 
